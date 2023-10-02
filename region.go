@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/iodasolutions/xbee-common/cmd"
 	"github.com/iodasolutions/xbee-common/constants"
 	"github.com/iodasolutions/xbee-common/log2"
 	"github.com/iodasolutions/xbee-common/provider"
@@ -122,7 +123,7 @@ func (r *Region2) SplitInstancesByStateStoppedFor(names []string) (stopped map[s
 	return stopped, other
 }
 
-func (r *Region2) fillInstances(ctx context.Context) error {
+func (r *Region2) fillInstances(ctx context.Context) *cmd.XbeeError {
 	r.Instances = make(map[string]*types.Instance)
 	if out, err := r.Svc.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		Filters: EnvFilters(),
@@ -145,7 +146,7 @@ func (r *Region2) fillInstances(ctx context.Context) error {
 								InstanceId: instance.InstanceId,
 								PublicIp:   aws.String(aHost.ExternalIp),
 							}); err != nil {
-								return err
+								return cmd.Error("cannot associate ip %s to instance %s: %v", aHost.ExternalIp, *instance.InstanceId, err)
 							}
 							instance.PublicIpAddress = &aHost.ExternalIp
 						}
@@ -155,7 +156,7 @@ func (r *Region2) fillInstances(ctx context.Context) error {
 		}
 		return nil
 	} else {
-		return err
+		return cmd.Error("an error occured when getting info for instances in region %s: %v", r.Name, err)
 	}
 }
 
@@ -395,12 +396,12 @@ func (r *Region2) deleteDefaultSecurityGroupsForEnv(ctx context.Context) error {
 	return nil
 }
 
-func (r *Region2) waitUntilInstancesAreInState(ctx context.Context, state types.InstanceStateName, names ...string) error {
+func (r *Region2) waitUntilInstancesAreInState(ctx context.Context, state types.InstanceStateName, names ...string) *cmd.XbeeError {
 
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("an error occured while putting %v for region %s to %s: %v", names, r.Name, state, ctx.Err())
+			return cmd.Error("an error occured while putting %v for region %s to %s: %v", names, r.Name, state, ctx.Err())
 		case <-time.After(500 * time.Millisecond):
 			err := r.fillInstances(ctx)
 			if err != nil {
@@ -875,6 +876,6 @@ func xbeeState(state string) string {
 	case "terminated":
 		return constants.State.NotExisting
 	default:
-		panic(util.Error("unsupported state %s", state))
+		panic(cmd.Error("unsupported state %s", state))
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/iodasolutions/xbee-common/cmd"
 	"github.com/iodasolutions/xbee-common/log2"
 	"github.com/iodasolutions/xbee-common/util"
 	"sync"
@@ -12,7 +13,7 @@ import (
 type Admin struct {
 }
 
-func (pv Admin) DestroyVolumes(names []string) error {
+func (pv Admin) DestroyVolumes(names []string) *cmd.XbeeError {
 	log2.Infof("asked to destroy volumes %v ...", names)
 	ctx := context.Background()
 	if regions, err := pv.regionsFromVolumes(ctx); err != nil {
@@ -53,7 +54,7 @@ func (pv Admin) DestroyVolumes(names []string) error {
 	}
 }
 
-func (pv Admin) regionsFromVolumes(ctx context.Context) (map[string]*Region2, error) {
+func (pv Admin) regionsFromVolumes(ctx context.Context) (map[string]*Region2, *cmd.XbeeError) {
 	volumes, err := VolumesFrom()
 	if err != nil {
 		return nil, err

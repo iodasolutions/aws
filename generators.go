@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/iodasolutions/xbee-common/cmd"
 	"github.com/iodasolutions/xbee-common/log2"
 	"github.com/iodasolutions/xbee-common/util"
 	"sync"
@@ -102,7 +103,7 @@ func newRegion(ctx context.Context, name string, hosts map[string]*ProviderHost,
 	return ch
 }
 
-func (pv Provider) regionsForHosts(ctx context.Context) (map[string]*Region2, error) {
+func (pv Provider) regionsForHosts(ctx context.Context) (map[string]*Region2, *cmd.XbeeError) {
 	hosts, err := HostsByRegion()
 	if err != nil {
 		return nil, err

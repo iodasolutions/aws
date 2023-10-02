@@ -3,6 +3,7 @@ package aws
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/iodasolutions/xbee-common/cmd"
 	"github.com/iodasolutions/xbee-common/provider"
 	"github.com/iodasolutions/xbee-common/util"
 )
@@ -50,7 +51,7 @@ type ProviderHost struct {
 	ExternalIp    string
 }
 
-func HostsByRegion() (map[string]map[string]*ProviderHost, error) {
+func HostsByRegion() (map[string]map[string]*ProviderHost, *cmd.XbeeError) {
 	hosts := provider.Hosts()
 	result := map[string]map[string]*ProviderHost{}
 	for _, hReq := range hosts {
@@ -78,10 +79,10 @@ func HostsByName() (map[string]*ProviderHost, error) {
 	return result, nil
 }
 
-func hostFrom(req *provider.Host) (*ProviderHost, error) {
+func hostFrom(req *provider.Host) (*ProviderHost, *cmd.XbeeError) {
 	m, err := fromMap(req.Provider)
 	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal json provider data for host %s : %v", req.Name, err)
+		return nil, cmd.Error("cannot unmarshal json provider data for host %s : %v", req.Name, err)
 	}
 	return &ProviderHost{
 		Specification: m,
@@ -98,10 +99,10 @@ type Volume struct {
 	Specification *Model
 }
 
-func volumeFrom(req *provider.Volume) (*Volume, error) {
+func volumeFrom(req *provider.Volume) (*Volume, *cmd.XbeeError) {
 	m, err := fromMap(req.Provider)
 	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal json provider data for volume %s : %v", req.Name, err)
+		return nil, cmd.Error("cannot unmarshal json provider data for volume %s : %v", req.Name, err)
 	}
 	return &Volume{
 		GenericVolume: provider.FromVolume(req),
@@ -109,7 +110,7 @@ func volumeFrom(req *provider.Volume) (*Volume, error) {
 	}, nil
 }
 
-func VolumesFrom() (map[string]map[string]*Volume, error) {
+func VolumesFrom() (map[string]map[string]*Volume, *cmd.XbeeError) {
 	volumes := provider.VolumesForEnv()
 	result := make(map[string]map[string]*Volume)
 	for _, vReq := range volumes {

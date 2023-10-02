@@ -3,9 +3,9 @@ package aws
 import (
 	"bytes"
 	"encoding/base64"
+	"github.com/iodasolutions/xbee-common/cmd"
 	"github.com/iodasolutions/xbee-common/provider"
 	"github.com/iodasolutions/xbee-common/template"
-	"github.com/iodasolutions/xbee-common/util"
 )
 
 var userdata = `#!/bin/bash
@@ -18,7 +18,7 @@ func UserDataBase64(user string) (*string, error) {
 	}
 	w := &bytes.Buffer{}
 	if err := template.OutputWithTemplate(userdata, w, model, nil); err != nil {
-		panic(util.Error("failed to parse userdata template : %v", err))
+		panic(cmd.Error("failed to parse userdata template : %v", err))
 	}
 	userData := w.String()
 	userData64 := base64.StdEncoding.EncodeToString([]byte(userData))

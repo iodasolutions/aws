@@ -2,7 +2,7 @@ package aws
 
 import (
 	"context"
-	"fmt"
+	"github.com/iodasolutions/xbee-common/cmd"
 	"github.com/iodasolutions/xbee-common/log2"
 	"github.com/iodasolutions/xbee-common/provider"
 	"github.com/iodasolutions/xbee-common/util"
@@ -12,7 +12,7 @@ import (
 type Provider struct {
 }
 
-func (pv Provider) Up() (*provider.InitialStatus, error) {
+func (pv Provider) Up() (*provider.InitialStatus, *cmd.XbeeError) {
 	ctx := context.Background()
 
 	if regions, err := pv.regionsForHosts(ctx); err != nil {
@@ -66,7 +66,7 @@ func (pv Provider) Up() (*provider.InitialStatus, error) {
 			}
 		}
 		if inError {
-			return nil, fmt.Errorf("up command failed, provider cannot continue")
+			return nil, cmd.Error("up command failed, provider cannot continue")
 		}
 		names = append(names, created...)
 		names = append(names, started...)
@@ -119,7 +119,7 @@ func (pv Provider) Up() (*provider.InitialStatus, error) {
 	}
 }
 
-func (pv Provider) Delete() error {
+func (pv Provider) Delete() *cmd.XbeeError {
 	ctx := context.Background()
 
 	if regions, err := pv.regionsForHosts(ctx); err != nil {
@@ -139,7 +139,7 @@ func (pv Provider) Delete() error {
 
 }
 
-func (pv Provider) InstanceInfos() (map[string]*provider.InstanceInfo, error) {
+func (pv Provider) InstanceInfos() (map[string]*provider.InstanceInfo, *cmd.XbeeError) {
 	ctx := context.Background()
 	result := map[string]*provider.InstanceInfo{}
 	if regions, err := pv.regionsForHosts(ctx); err != nil {
