@@ -55,7 +55,7 @@ func TagsForResource(name string) []types.Tag {
 		},
 		{
 			Key:   aws.String("Name"),
-			Value: aws.String(fmt.Sprintf("%s(%s)", name, anId.NameVersion())),
+			Value: aws.String(fmt.Sprintf("%s(%s)", name, anId.Colon())),
 		},
 	}
 }

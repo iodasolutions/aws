@@ -262,7 +262,6 @@ func (r *Region2) startInstances(ctx context.Context) (result []*UpInstanceGener
 }
 
 func (r *Region2) destroyInstances(ctx context.Context) {
-	var err error
 	notExisting, _ := r.NotExisting()
 	if len(notExisting) > 0 {
 		var names []string
@@ -280,7 +279,7 @@ func (r *Region2) destroyInstances(ctx context.Context) {
 			names = append(names, name)
 			instanceIds = append(instanceIds, *r.Instances[name].InstanceId)
 		}
-		_, err = r.Svc.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
+		_, err := r.Svc.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 			InstanceIds: instanceIds,
 		})
 		if err == nil {
@@ -290,8 +289,8 @@ func (r *Region2) destroyInstances(ctx context.Context) {
 			return
 		}
 		log2.Infof("transitioning instances from shutting-down to terminated, for %v, wait...", names)
-		err = r.waitUntilInstancesAreInState(ctx, "terminated", names...)
-		if err != nil {
+		err2 := r.waitUntilInstancesAreInState(ctx, "terminated", names...)
+		if err2 != nil {
 			log2.Errorf(err.Error())
 			return
 		}
@@ -325,7 +324,7 @@ func (r *Region2) destroyInstances(ctx context.Context) {
 		}
 	} else {
 		if r.xbeeSecurityGroupId != "" || r.sshSecurityGroupId != "" {
-			err = r.deleteDefaultSecurityGroupsForEnvIfPossible(ctx)
+			err := r.deleteDefaultSecurityGroupsForEnvIfPossible(ctx)
 			if err != nil {
 				log2.Errorf("%v", err)
 			} else {
