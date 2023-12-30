@@ -8,32 +8,22 @@ import (
 )
 
 func EnvFilters() []types.Filter {
-	anId := provider.EnvId()
 	return []types.Filter{
 		{
-			Name:   aws.String("tag:xbee.env.commit"),
-			Values: []string{anId.Commit},
-		},
-		{
-			Name:   aws.String("tag:xbee.env.origin"),
-			Values: []string{anId.Origin},
+			Name:   aws.String("tag:xbee.id"),
+			Values: []string{provider.EnvId()},
 		},
 	}
 }
 func EnvFiltersForResource(name string) []types.Filter {
-	anId := provider.EnvId()
 	return []types.Filter{
 		{
 			Name:   aws.String("tag:xbee.name"),
 			Values: []string{name},
 		},
 		{
-			Name:   aws.String("tag:xbee.env.commit"),
-			Values: []string{anId.Commit},
-		},
-		{
-			Name:   aws.String("tag:xbee.env.origin"),
-			Values: []string{anId.Origin},
+			Name:   aws.String("tag:xbee.id"),
+			Values: []string{provider.EnvId()},
 		},
 	}
 }
@@ -46,16 +36,12 @@ func TagsForResource(name string) []types.Tag {
 			Value: &name,
 		},
 		{
-			Key:   aws.String("xbee.env.commit"),
-			Value: &anId.Commit,
-		},
-		{
-			Key:   aws.String("xbee.env.origin"),
-			Value: &anId.Origin,
+			Key:   aws.String("xbee.id"),
+			Value: &anId,
 		},
 		{
 			Key:   aws.String("Name"),
-			Value: aws.String(fmt.Sprintf("%s(%s)", name, anId.Colon())),
+			Value: aws.String(fmt.Sprintf("%s(%s)", name, provider.EnvName())),
 		},
 	}
 }

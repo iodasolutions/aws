@@ -43,13 +43,14 @@ func newRegion(ctx context.Context, name string, hosts map[string]*ProviderHost,
 			sendError(ctx, ch, fmt.Errorf("cannot create session to region %s : %v", name, err))
 		} else {
 			r := &Region2{
-				Name:    name,
-				Svc:     ec2.NewFromConfig(cfg),
-				Hosts:   hosts,
-				Volumes: volumes,
+				Name:     name,
+				Svc:      ec2.NewFromConfig(cfg),
+				Hosts:    hosts,
+				Volumes:  volumes,
+				ImageMap: map[string]string{},
 			}
 			var wg sync.WaitGroup
-			wg.Add(5)
+			wg.Add(6)
 			go func() {
 				defer wg.Done()
 				err := r.fillInstances(ctx)
@@ -91,6 +92,15 @@ func newRegion(ctx context.Context, name string, hosts map[string]*ProviderHost,
 				}
 				r.EIps = out.Addresses
 			}()
+			go func() {
+				defer wg.Done()
+				err := r.ensureImages(ctx)
+				if err != nil {
+					sendError(ctx, ch, fmt.Errorf("an unexpected error occured when searching for AMIs in region %s : %v", name, err))
+					return
+				}
+			}()
+
 			wg.Wait()
 			select {
 			case <-ctx.Done():
@@ -128,4 +138,9 @@ func (pv Provider) regionsForHosts(ctx context.Context) (map[string]*Region2, *c
 		}
 	}
 	return result, nil
+}
+
+type OperationStatus struct {
+	Host    *ProviderHost
+	InError bool
 }

@@ -49,6 +49,7 @@ type ProviderHost struct {
 	User          string
 	Volumes       []string
 	ExternalIp    string
+	PackId        string
 }
 
 func HostsByRegion() (map[string]map[string]*ProviderHost, *cmd.XbeeError) {
@@ -91,6 +92,7 @@ func hostFrom(req *provider.Host) (*ProviderHost, *cmd.XbeeError) {
 		User:          req.User,
 		Volumes:       req.Volumes,
 		ExternalIp:    req.ExternalIp,
+		PackId:        req.PackId,
 	}, nil
 }
 

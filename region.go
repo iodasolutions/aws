@@ -17,10 +17,11 @@ import (
 )
 
 type Region2 struct {
-	Name  string
-	Svc   *ec2.Client
-	VpcId *string
-	EIps  []types.Address
+	Name     string
+	Svc      *ec2.Client
+	VpcId    *string
+	EIps     []types.Address
+	ImageMap map[string]string
 
 	//attached to server request
 	Volumes map[string]*Volume
@@ -51,6 +52,7 @@ func (r *Region2) Filter(hosts map[string]*ProviderHost, volumes map[string]*Vol
 		Instances:           reducedInstances,
 		Ec2Volumes:          r.Ec2Volumes,
 		EIps:                r.EIps,
+		ImageMap:            r.ImageMap,
 	}
 }
 func (r *Region2) HostNames() (result []string) {
@@ -328,8 +330,7 @@ func (r *Region2) destroyInstances(ctx context.Context) {
 			if err != nil {
 				log2.Errorf("%v", err)
 			} else {
-				anId := provider.EnvId()
-				envName := anId.ShortName()
+				envName := provider.EnvName()
 				if r.xbeeSecurityGroupId != "" {
 					log2.Infof("successfully delete XBEE security group for env %s in region %s", envName, r.Name)
 				}
@@ -357,8 +358,7 @@ func (r *Region2) deleteDefaultSecurityGroupsForEnvIfPossible(ctx context.Contex
 	return
 }
 func (r *Region2) deleteDefaultSecurityGroupsForEnv(ctx context.Context) error {
-	anId := provider.EnvId()
-	envName := anId.ShortName()
+	envName := provider.EnvName()
 	if r.sshSecurityGroupId != "" {
 		_, err := r.Svc.DeleteSecurityGroup(ctx, &ec2.DeleteSecurityGroupInput{
 			GroupId: &r.sshSecurityGroupId,
@@ -612,12 +612,12 @@ func (r *Region2) createSecurityGroup(ctx context.Context, host *ProviderHost) (
 
 func (r *Region2) findDefaultEnvSecurityGroups(ctx context.Context) (string, string, error) {
 	var sshSecurityGroupId, xbeeSecurityGroupId string
-	anId := provider.EnvId()
+	envName := provider.EnvName()
 	out, err := r.Svc.DescribeSecurityGroups(ctx, &ec2.DescribeSecurityGroupsInput{
 		Filters: EnvFiltersForResource("SSH"),
 	})
 	if err != nil {
-		return "", "", fmt.Errorf("unexpected error when looking for existing SSH security group for env %s in region %s : %v", anId.ShortName(), r.Name, err)
+		return "", "", fmt.Errorf("unexpected error when looking for existing SSH security group for env %s in region %s : %v", envName, r.Name, err)
 	}
 	if len(out.SecurityGroups) > 0 {
 		sshSecurityGroupId = *out.SecurityGroups[0].GroupId
@@ -626,7 +626,7 @@ func (r *Region2) findDefaultEnvSecurityGroups(ctx context.Context) (string, str
 		Filters: EnvFiltersForResource("XBEE"),
 	})
 	if err != nil {
-		return "", "", fmt.Errorf("unexpected error when looking for existing XBEE security group for env %s in region %s : %v", anId.ShortName(), r.Name, err)
+		return "", "", fmt.Errorf("unexpected error when looking for existing XBEE security group for env %s in region %s : %v", envName, r.Name, err)
 	}
 	if len(out.SecurityGroups) > 0 {
 		xbeeSecurityGroupId = *out.SecurityGroups[0].GroupId
@@ -659,8 +659,7 @@ func (r *Region2) ensureDefaultEnvSecurityGroups(ctx context.Context) (bool, boo
 
 func (r *Region2) createSSHSecurityGroup(ctx context.Context) (string, error) {
 	var secGroupId string
-	anId := provider.EnvId()
-	envName := anId.ShortName()
+	envName := provider.EnvName()
 	if res, err := r.Svc.CreateSecurityGroup(ctx, &ec2.CreateSecurityGroupInput{
 		VpcId:       r.VpcId,
 		Description: aws.String("created by aws provider for XBEE"),
@@ -702,8 +701,7 @@ func (r *Region2) createSSHSecurityGroup(ctx context.Context) (string, error) {
 
 func (r *Region2) createXbeeSecurityGroup(ctx context.Context) (string, error) {
 	var secGroupId string
-	anId := provider.EnvId()
-	envName := anId.ShortName()
+	envName := provider.EnvName()
 	if res, err := r.Svc.CreateSecurityGroup(ctx, &ec2.CreateSecurityGroupInput{
 		VpcId:       r.VpcId,
 		Description: aws.String("created by aws provider for XBEE"),
@@ -833,10 +831,16 @@ func (r *Region2) AttachVolumes(ctx context.Context, hostName string) error {
 func (r *Region2) instanceInfos() map[string]*provider.InstanceInfo {
 	result := map[string]*provider.InstanceInfo{}
 	for hostName, instance := range r.Instances {
+		packId := r.Hosts[hostName].PackId
+		var packIdExists bool
+		if _, ok := r.ImageMap[packId]; ok {
+			packIdExists = true
+		}
 		info := &provider.InstanceInfo{
-			Name:  hostName,
-			State: xbeeState(string(instance.State.Name)),
-			User:  r.Hosts[hostName].User,
+			Name:        hostName,
+			State:       xbeeState(string(instance.State.Name)),
+			User:        r.Hosts[hostName].User,
+			PackIdExist: packIdExists,
 		}
 		result[hostName] = info
 		if info.State == constants.State.Up {
@@ -860,6 +864,41 @@ func (r *Region2) instanceInfos() map[string]*provider.InstanceInfo {
 	return result
 }
 
+func (r *Region2) packIds() (result []string) {
+	for _, h := range r.Hosts {
+		result = append(result, h.PackId)
+	}
+	return
+}
+
+type ImageId struct {
+	PackId string
+	OsArch string
+}
+
+func (r *Region2) ensureImages(ctx context.Context) error {
+	out, err := r.Svc.DescribeImages(ctx, &ec2.DescribeImagesInput{
+		Filters: []types.Filter{
+			{
+				Name:   aws.String("tag:xbee.id"),
+				Values: r.packIds(),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	for _, im := range out.Images {
+		for _, tag := range im.Tags {
+			key := *tag.Key
+			if key == "xbee.id" {
+				value := *tag.Value
+				r.ImageMap[value] = *im.ImageId
+			}
+		}
+	}
+	return nil
+}
 func xbeeState(state string) string {
 	switch state {
 	case "stopping":
@@ -877,4 +916,85 @@ func xbeeState(state string) string {
 	default:
 		panic(cmd.Error("unsupported state %s", state))
 	}
+}
+
+func (r *Region2) PackInstancesGenerator(ctx context.Context) <-chan *OperationStatus {
+	var channels []<-chan *OperationStatus
+	for _, h := range r.Hosts {
+		ch := make(chan *OperationStatus)
+		channels = append(channels, ch)
+		go func(h *ProviderHost) {
+			defer close(ch)
+			if err := r.packInstance(ctx, h); err != nil {
+				ch <- &OperationStatus{
+					Host:    h,
+					InError: true,
+				}
+			} else {
+				ch <- &OperationStatus{
+					Host:    h,
+					InError: false,
+				}
+			}
+		}(h)
+	}
+	return util.Multiplex(ctx, channels...)
+}
+
+func (r *Region2) packInstance(ctx context.Context, h *ProviderHost) error {
+	if len(r.Instances) == 0 {
+		log2.Warnf("r.Instances has size 0")
+	}
+	instance := r.Instances[h.Name]
+	if len(r.Instances) == 0 {
+		log2.Warnf("instance for h.Name=%s is nil", h.Name)
+	}
+	input := &ec2.CreateImageInput{
+		InstanceId: instance.InstanceId,
+		Name:       aws.String(h.PackId),
+		NoReboot:   aws.Bool(true),
+	}
+
+	result, err := r.Svc.CreateImage(ctx, input)
+	if err != nil {
+		return err
+	}
+	tags := []types.Tag{
+		{
+			Key:   aws.String("xbee.id"),
+			Value: aws.String(h.PackId),
+		},
+		{
+			Key:   aws.String("xbee.os_arch"),
+			Value: aws.String(h.Specification.OsArch),
+		},
+	}
+	if _, err := r.Svc.CreateTags(ctx, &ec2.CreateTagsInput{
+		Tags:      tags,
+		Resources: []string{*result.ImageId},
+	}); err != nil {
+		fmt.Println(err)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(30 * time.Second):
+			describeInput := &ec2.DescribeImagesInput{
+				ImageIds: []string{*result.ImageId},
+			}
+			describeResult, _ := r.Svc.DescribeImages(ctx, describeInput)
+			if len(describeResult.Images) > 0 {
+				state := describeResult.Images[0].State
+				if state == "available" {
+					return nil
+				}
+				if state == "failed" {
+					return fmt.Errorf("Creation of AMI %s failed", h.PackId)
+				}
+			}
+		}
+	}
+
 }

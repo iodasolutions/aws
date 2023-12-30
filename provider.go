@@ -36,12 +36,12 @@ func (pv Provider) Up() (*provider.InitialStatus, *cmd.XbeeError) {
 				if err != nil {
 					log2.Infof("unexpected error when calling ensureDefaultEnvSecurityGroups, unable to create hosts %v : %v", names, err)
 				} else {
-					anId := provider.EnvId()
+					envName := provider.EnvName()
 					if sshCreated {
-						log2.Infof("created SSH security group for env %s in region %s", anId.ShortName(), notExistingRegion.Name)
+						log2.Infof("created SSH security group for env %s in region %s", envName, notExistingRegion.Name)
 					}
 					if xbeeCreated {
-						log2.Infof("created XBEE security group for env %s in region %s", anId.ShortName(), notExistingRegion.Name)
+						log2.Infof("created XBEE security group for env %s in region %s", envName, notExistingRegion.Name)
 					}
 					channels = append(channels, notExistingRegion.CreateInstancesGenerator(ctx))
 				}
@@ -151,5 +151,32 @@ func (pv Provider) InstanceInfos() (map[string]*provider.InstanceInfo, *cmd.Xbee
 			}
 		}
 		return result, nil
+	}
+}
+
+func (pv Provider) Image() *cmd.XbeeError {
+	ctx := context.Background()
+
+	if regions, err := pv.regionsForHosts(ctx); err != nil {
+		return err
+	} else {
+		var channels []<-chan *OperationStatus
+		for _, r := range regions {
+			channels = append(channels, r.PackInstancesGenerator(ctx))
+		}
+		ch := util.Multiplex(ctx, channels...)
+		var inError bool
+		for status := range ch {
+			if status.InError {
+				inError = true
+				log2.Errorf("Creation of AMI %s failed", status.Host.PackId)
+			} else {
+				log2.Infof("Creation of AMI %s succeeded", status.Host.PackId)
+			}
+		}
+		if inError {
+			return cmd.Error("AWS image creation operation failed")
+		}
+		return nil
 	}
 }
