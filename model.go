@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/iodasolutions/xbee-common/cmd"
 	"github.com/iodasolutions/xbee-common/provider"
+	"github.com/iodasolutions/xbee-common/types"
 	"github.com/iodasolutions/xbee-common/util"
 )
 
@@ -49,9 +50,31 @@ type ProviderHost struct {
 	User          string
 	Volumes       []string
 	ExternalIp    string
-	PackId        string
+	PackId        *types.IdJson
+	PackHash      string
+	SystemId      *types.IdJson
+	SystemHash    string
 }
 
+func (ph *ProviderHost) EffectivePackId() *types.IdJson {
+	if ph.PackId == nil {
+		return ph.SystemId
+	}
+	return ph.PackId
+}
+func (ph *ProviderHost) EffectiveHash() string {
+	if ph.PackId == nil {
+		return ph.SystemHash
+	}
+	return ph.PackHash
+}
+func (ph *ProviderHost) DisplayName() string {
+	name := ph.EffectivePackId().ShortName()
+	if ph.PackId != nil {
+		name += "-" + ph.SystemId.ShortName()
+	}
+	return name
+}
 func HostsByRegion() (map[string]map[string]*ProviderHost, *cmd.XbeeError) {
 	hosts := provider.Hosts()
 	result := map[string]map[string]*ProviderHost{}
@@ -93,6 +116,9 @@ func hostFrom(req *provider.Host) (*ProviderHost, *cmd.XbeeError) {
 		Volumes:       req.Volumes,
 		ExternalIp:    req.ExternalIp,
 		PackId:        req.PackId,
+		PackHash:      req.PackHash,
+		SystemId:      req.SystemId,
+		SystemHash:    req.SystemHash,
 	}, nil
 }
 

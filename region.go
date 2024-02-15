@@ -502,6 +502,22 @@ func (r *Region2) createOneInstance(ctx context.Context, h *ProviderHost) error 
 	if err != nil {
 		return err
 	}
+
+	var amiToUse string
+	if h.PackId != nil {
+		if builtAmi, ok := r.ImageMap[h.PackHash]; ok {
+			amiToUse = builtAmi
+		}
+	}
+	if amiToUse == "" {
+		if builtAmi, ok := r.ImageMap[h.SystemHash]; ok {
+			amiToUse = builtAmi
+		}
+	}
+	if amiToUse == "" {
+		amiToUse = h.Specification.Ami
+	}
+
 	out, err := r.Svc.RunInstances(ctx, &ec2.RunInstancesInput{
 		Placement: placement,
 		BlockDeviceMappings: []types.BlockDeviceMapping{
@@ -514,7 +530,7 @@ func (r *Region2) createOneInstance(ctx context.Context, h *ProviderHost) error 
 			},
 		},
 		// An Amazon Linux AMI ID for t2.micro instances in the us-west-2 region
-		ImageId:          aws.String(h.Specification.Ami),
+		ImageId:          aws.String(amiToUse),
 		InstanceType:     types.InstanceType(h.Specification.InstanceType),
 		MinCount:         aws.Int32(1),
 		MaxCount:         aws.Int32(1),
@@ -831,16 +847,20 @@ func (r *Region2) AttachVolumes(ctx context.Context, hostName string) error {
 func (r *Region2) instanceInfos() map[string]*provider.InstanceInfo {
 	result := map[string]*provider.InstanceInfo{}
 	for hostName, instance := range r.Instances {
-		packId := r.Hosts[hostName].PackId
 		var packIdExists bool
-		if _, ok := r.ImageMap[packId]; ok {
+		if _, ok := r.ImageMap[r.Hosts[hostName].EffectiveHash()]; ok {
 			packIdExists = true
 		}
+		var systemIdExists bool
+		if _, ok := r.ImageMap[r.Hosts[hostName].SystemHash]; ok {
+			systemIdExists = true
+		}
 		info := &provider.InstanceInfo{
-			Name:        hostName,
-			State:       xbeeState(string(instance.State.Name)),
-			User:        r.Hosts[hostName].User,
-			PackIdExist: packIdExists,
+			Name:          hostName,
+			State:         xbeeState(string(instance.State.Name)),
+			User:          r.Hosts[hostName].User,
+			PackIdExist:   packIdExists,
+			SystemIdExist: systemIdExists,
 		}
 		result[hostName] = info
 		if info.State == constants.State.Up {
@@ -851,12 +871,22 @@ func (r *Region2) instanceInfos() map[string]*provider.InstanceInfo {
 			}
 		}
 	}
-	for hostName := range r.Hosts {
+	for hostName, h := range r.Hosts {
+		var packIdExists bool
+		if _, ok := r.ImageMap[h.EffectiveHash()]; ok {
+			packIdExists = true
+		}
+		var systemIdExists bool
+		if _, ok := r.ImageMap[h.SystemHash]; ok {
+			systemIdExists = true
+		}
 		if _, ok := result[hostName]; !ok {
 			info := &provider.InstanceInfo{
-				Name:  hostName,
-				State: constants.State.NotExisting,
-				User:  r.Hosts[hostName].User,
+				Name:          hostName,
+				State:         constants.State.NotExisting,
+				User:          h.User,
+				PackIdExist:   packIdExists,
+				SystemIdExist: systemIdExists,
 			}
 			result[hostName] = info
 		}
@@ -865,10 +895,11 @@ func (r *Region2) instanceInfos() map[string]*provider.InstanceInfo {
 }
 
 func (r *Region2) packIds() (result []string) {
+	aSet := util.NewEmptyStringSet()
 	for _, h := range r.Hosts {
-		result = append(result, h.PackId)
+		aSet.Add(h.EffectiveHash(), h.SystemHash)
 	}
-	return
+	return aSet.Slice()
 }
 
 type ImageId struct {
@@ -951,10 +982,11 @@ func (r *Region2) packInstance(ctx context.Context, h *ProviderHost) error {
 	}
 	input := &ec2.CreateImageInput{
 		InstanceId: instance.InstanceId,
-		Name:       aws.String(h.PackId),
+		Name:       aws.String(h.EffectiveHash()),
 		NoReboot:   aws.Bool(true),
 	}
-
+	log2.Infof("input.InstanceId=%s", *instance.InstanceId)
+	log2.Infof("input.Name=[%s]", h.EffectiveHash())
 	result, err := r.Svc.CreateImage(ctx, input)
 	if err != nil {
 		return err
@@ -962,12 +994,48 @@ func (r *Region2) packInstance(ctx context.Context, h *ProviderHost) error {
 	tags := []types.Tag{
 		{
 			Key:   aws.String("xbee.id"),
-			Value: aws.String(h.PackId),
+			Value: aws.String(h.EffectiveHash()),
+		},
+		{
+			Key:   aws.String("Name"),
+			Value: aws.String(h.DisplayName()),
+		},
+		{
+			Key:   aws.String("xbee.origin"),
+			Value: aws.String(h.EffectivePackId().Origin),
+		},
+		{
+			Key:   aws.String("xbee.version"),
+			Value: aws.String(h.EffectivePackId().Version),
+		},
+		{
+			Key:   aws.String("xbee.commit"),
+			Value: aws.String(h.EffectivePackId().Commit),
 		},
 		{
 			Key:   aws.String("xbee.os_arch"),
 			Value: aws.String(h.Specification.OsArch),
 		},
+	}
+	if h.PackId != nil {
+		tags = append(tags,
+			types.Tag{
+				Key:   aws.String("xbee.system.origin"),
+				Value: aws.String(h.SystemId.Origin),
+			},
+			types.Tag{
+				Key:   aws.String("xbee.system.commit"),
+				Value: aws.String(h.SystemId.Commit),
+			},
+			types.Tag{
+				Key:   aws.String("xbee.system.id"),
+				Value: aws.String(h.SystemHash),
+			},
+			types.Tag{
+				Key:   aws.String("xbee.system.version"),
+				Value: aws.String(h.SystemId.Version),
+			},
+		)
 	}
 	if _, err := r.Svc.CreateTags(ctx, &ec2.CreateTagsInput{
 		Tags:      tags,
@@ -991,7 +1059,7 @@ func (r *Region2) packInstance(ctx context.Context, h *ProviderHost) error {
 					return nil
 				}
 				if state == "failed" {
-					return fmt.Errorf("Creation of AMI %s failed", h.PackId)
+					return fmt.Errorf("Creation of AMI %s failed", h.EffectivePackId())
 				}
 			}
 		}

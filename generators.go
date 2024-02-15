@@ -113,7 +113,7 @@ func newRegion(ctx context.Context, name string, hosts map[string]*ProviderHost,
 	return ch
 }
 
-func (pv Provider) regionsForHosts(ctx context.Context) (map[string]*Region2, *cmd.XbeeError) {
+func regionsForHosts(ctx context.Context) (map[string]*Region2, *cmd.XbeeError) {
 	hosts, err := HostsByRegion()
 	if err != nil {
 		return nil, err

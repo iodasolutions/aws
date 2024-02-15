@@ -15,7 +15,7 @@ type Provider struct {
 func (pv Provider) Up() (*provider.InitialStatus, *cmd.XbeeError) {
 	ctx := context.Background()
 
-	if regions, err := pv.regionsForHosts(ctx); err != nil {
+	if regions, err := regionsForHosts(ctx); err != nil {
 		return nil, err
 	} else {
 		var channels []<-chan *UpInstanceGeneratorResponse
@@ -122,7 +122,7 @@ func (pv Provider) Up() (*provider.InitialStatus, *cmd.XbeeError) {
 func (pv Provider) Delete() *cmd.XbeeError {
 	ctx := context.Background()
 
-	if regions, err := pv.regionsForHosts(ctx); err != nil {
+	if regions, err := regionsForHosts(ctx); err != nil {
 		return err
 	} else {
 		var wg sync.WaitGroup
@@ -142,7 +142,7 @@ func (pv Provider) Delete() *cmd.XbeeError {
 func (pv Provider) InstanceInfos() (map[string]*provider.InstanceInfo, *cmd.XbeeError) {
 	ctx := context.Background()
 	result := map[string]*provider.InstanceInfo{}
-	if regions, err := pv.regionsForHosts(ctx); err != nil {
+	if regions, err := regionsForHosts(ctx); err != nil {
 		return nil, err
 	} else {
 		for _, r := range regions {
@@ -157,7 +157,7 @@ func (pv Provider) InstanceInfos() (map[string]*provider.InstanceInfo, *cmd.Xbee
 func (pv Provider) Image() *cmd.XbeeError {
 	ctx := context.Background()
 
-	if regions, err := pv.regionsForHosts(ctx); err != nil {
+	if regions, err := regionsForHosts(ctx); err != nil {
 		return err
 	} else {
 		var channels []<-chan *OperationStatus
@@ -169,9 +169,9 @@ func (pv Provider) Image() *cmd.XbeeError {
 		for status := range ch {
 			if status.InError {
 				inError = true
-				log2.Errorf("Creation of AMI %s failed", status.Host.PackId)
+				log2.Errorf("Creation of AMI %s failed", status.Host.EffectivePackId())
 			} else {
-				log2.Infof("Creation of AMI %s succeeded", status.Host.PackId)
+				log2.Infof("Creation of AMI %s succeeded", status.Host.EffectivePackId())
 			}
 		}
 		if inError {
