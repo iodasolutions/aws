@@ -502,6 +502,11 @@ func (r *Region2) createOneInstance(ctx context.Context, h *ProviderHost) error 
 	if err != nil {
 		return err
 	}
+
+	ami := h.Specification.Ami
+	if builtAmi, ok := r.ImageMap[h.PackId]; ok {
+		ami = builtAmi
+	}
 	out, err := r.Svc.RunInstances(ctx, &ec2.RunInstancesInput{
 		Placement: placement,
 		BlockDeviceMappings: []types.BlockDeviceMapping{
@@ -514,7 +519,7 @@ func (r *Region2) createOneInstance(ctx context.Context, h *ProviderHost) error 
 			},
 		},
 		// An Amazon Linux AMI ID for t2.micro instances in the us-west-2 region
-		ImageId:          aws.String(h.Specification.Ami),
+		ImageId:          aws.String(ami),
 		InstanceType:     types.InstanceType(h.Specification.InstanceType),
 		MinCount:         aws.Int32(1),
 		MaxCount:         aws.Int32(1),
@@ -851,12 +856,18 @@ func (r *Region2) instanceInfos() map[string]*provider.InstanceInfo {
 			}
 		}
 	}
-	for hostName := range r.Hosts {
+	for hostName, h := range r.Hosts {
+		packId := h.PackId
+		var packIdExists bool
+		if _, ok := r.ImageMap[packId]; ok {
+			packIdExists = true
+		}
 		if _, ok := result[hostName]; !ok {
 			info := &provider.InstanceInfo{
-				Name:  hostName,
-				State: constants.State.NotExisting,
-				User:  r.Hosts[hostName].User,
+				Name:        hostName,
+				State:       constants.State.NotExisting,
+				User:        h.User,
+				PackIdExist: packIdExists,
 			}
 			result[hostName] = info
 		}
