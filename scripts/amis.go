@@ -19,7 +19,7 @@ func main() {
 	ctx := context.Background()
 	result := map[string]types.Image{}
 	// arch = x86_64 | arm64
-	for response := range AmisGenerator(ctx, "099720109477", "22.04 LTS", "x86_64") {
+	for response := range AmisGenerator(ctx, "099720109477", "24.04 LTS", "arm64") {
 		if response.Err == nil {
 			for _, image := range response.Images {
 				if existing, ok := result[response.Region]; ok {

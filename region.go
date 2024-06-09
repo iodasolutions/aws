@@ -985,8 +985,6 @@ func (r *Region2) packInstance(ctx context.Context, h *ProviderHost) error {
 		Name:       aws.String(h.EffectiveHash()),
 		NoReboot:   aws.Bool(true),
 	}
-	log2.Infof("input.InstanceId=%s", *instance.InstanceId)
-	log2.Infof("input.Name=[%s]", h.EffectiveHash())
 	result, err := r.Svc.CreateImage(ctx, input)
 	if err != nil {
 		return err
