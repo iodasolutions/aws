@@ -12,7 +12,7 @@ import (
 type Provider struct {
 }
 
-func (pv Provider) Up() (*provider.InitialStatus, *cmd.XbeeError) {
+func (pv Provider) Up() ([]*provider.InstanceInfo, *cmd.XbeeError) {
 	ctx := context.Background()
 
 	if regions, err := regionsForHosts(ctx); err != nil {
@@ -49,61 +49,48 @@ func (pv Provider) Up() (*provider.InitialStatus, *cmd.XbeeError) {
 			}
 		}
 		ch := util.Multiplex(ctx, channels...)
-		var names, created, started, up, other []string
+		var createdAndStarted, created []string
 		var inError bool
+		upStatuses := map[string]*UpInstanceGeneratorResponse{}
 		for upStatus := range ch {
+			upStatuses[upStatus.Name] = upStatus
 			if upStatus.InError {
 				inError = true
 			}
 			if upStatus.InitiallyNotExisting {
 				created = append(created, upStatus.Name)
+				createdAndStarted = append(createdAndStarted, upStatus.Name)
 			} else if upStatus.InitiallyDown {
-				started = append(started, upStatus.Name)
-			} else if upStatus.InitiallyUp {
-				up = append(up, upStatus.Name)
-			} else {
-				other = append(other, upStatus.Name)
+				createdAndStarted = append(createdAndStarted, upStatus.Name)
 			}
 		}
 		if inError {
 			return nil, cmd.Error("up command failed, provider cannot continue")
 		}
-		names = append(names, created...)
-		names = append(names, started...)
 		infos := map[string]*provider.InstanceInfo{}
 		for _, r := range regions {
-			filtered := r.FilterByHostInRequest(names)
+			filtered := r.FilterByHostInRequest(createdAndStarted)
 			if err := r.waitUntilInstancesAreInState(ctx, "running", filtered...); err != nil {
 				return nil, err
 			}
 			rInfos := r.instanceInfos()
 			for _, name := range filtered {
 				infos[name] = rInfos[name]
+				upStatus := upStatuses[name]
+				if upStatus.InitiallyUp {
+					infos[name].InitialState = "up"
+				} else if upStatus.InitiallyDown {
+					infos[name].InitialState = "down"
+				} else if upStatus.InitiallyNotExisting {
+					infos[name].InitialState = "not existing"
+				}
 			}
-		}
-		response := &provider.InitialStatus{
-			NotExisting: map[string]*provider.InstanceInfo{},
-			Down:        map[string]*provider.InstanceInfo{},
-			Up:          map[string]*provider.InstanceInfo{},
-			Other:       map[string]*provider.InstanceInfo{},
-		}
-		for _, name := range created {
-			response.NotExisting[name] = infos[name]
-		}
-		for _, name := range started {
-			response.Down[name] = infos[name]
-		}
-		for _, name := range up {
-			response.Up[name] = infos[name]
-		}
-		for _, name := range other {
-			response.Other[name] = infos[name]
 		}
 		var wg sync.WaitGroup
 		for _, r := range regions {
-			names = r.FilterByHostInRequest(created)
-			if len(names) > 0 {
-				for _, name := range names {
+			createdAndStarted = r.FilterByHostInRequest(created)
+			if len(createdAndStarted) > 0 {
+				for _, name := range createdAndStarted {
 					wg.Add(1)
 					go func(r *Region2, name string) {
 						defer wg.Done()
@@ -115,7 +102,11 @@ func (pv Provider) Up() (*provider.InitialStatus, *cmd.XbeeError) {
 			}
 		}
 		wg.Wait()
-		return response, nil
+		var result []*provider.InstanceInfo
+		for _, info := range infos {
+			result = append(result, info)
+		}
+		return result, nil
 	}
 }
 
@@ -139,15 +130,15 @@ func (pv Provider) Delete() *cmd.XbeeError {
 
 }
 
-func (pv Provider) InstanceInfos() (map[string]*provider.InstanceInfo, *cmd.XbeeError) {
+func (pv Provider) InstanceInfos() ([]*provider.InstanceInfo, *cmd.XbeeError) {
 	ctx := context.Background()
-	result := map[string]*provider.InstanceInfo{}
+	var result []*provider.InstanceInfo
 	if regions, err := regionsForHosts(ctx); err != nil {
 		return nil, err
 	} else {
 		for _, r := range regions {
 			for _, info := range r.instanceInfos() {
-				result[info.Name] = info
+				result = append(result, info)
 			}
 		}
 		return result, nil
