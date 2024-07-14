@@ -1003,10 +1003,6 @@ func (r *Region2) packInstance(ctx context.Context, h *ProviderHost) error {
 			Value: aws.String(h.EffectivePackId().Origin),
 		},
 		{
-			Key:   aws.String("xbee.version"),
-			Value: aws.String(h.EffectivePackId().Version),
-		},
-		{
 			Key:   aws.String("xbee.commit"),
 			Value: aws.String(h.EffectivePackId().Commit),
 		},
@@ -1028,10 +1024,6 @@ func (r *Region2) packInstance(ctx context.Context, h *ProviderHost) error {
 			types.Tag{
 				Key:   aws.String("xbee.system.id"),
 				Value: aws.String(h.SystemHash),
-			},
-			types.Tag{
-				Key:   aws.String("xbee.system.version"),
-				Value: aws.String(h.SystemId.Version),
 			},
 		)
 	}
