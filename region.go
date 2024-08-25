@@ -25,7 +25,7 @@ type Region2 struct {
 
 	//attached to server request
 	Volumes map[string]*Volume
-	Hosts   map[string]*ProviderHost
+	Hosts   map[string]*Host
 
 	//set lazzily, used for each host in an environment.
 	sshSecurityGroupId  string
@@ -36,7 +36,7 @@ type Region2 struct {
 	Ec2Volumes map[string]*types.Volume
 }
 
-func (r *Region2) Filter(hosts map[string]*ProviderHost, volumes map[string]*Volume) *Region2 {
+func (r *Region2) Filter(hosts map[string]*Host, volumes map[string]*Volume) *Region2 {
 	reducedInstances := map[string]*types.Instance{}
 	for name := range hosts {
 		reducedInstances[name] = r.Instances[name]
@@ -83,8 +83,8 @@ func (r *Region2) existingVolumesForNames(names []string) (result []*types.Volum
 	return
 }
 
-func (r *Region2) NotExisting() (map[string]*ProviderHost, map[string]*Volume) {
-	hosts := map[string]*ProviderHost{}
+func (r *Region2) NotExisting() (map[string]*Host, map[string]*Volume) {
+	hosts := map[string]*Host{}
 	volumes := map[string]*Volume{}
 	for name, h := range r.Hosts {
 		if _, ok := r.Instances[name]; !ok {
@@ -96,8 +96,8 @@ func (r *Region2) NotExisting() (map[string]*ProviderHost, map[string]*Volume) {
 	}
 	return hosts, volumes
 }
-func (r *Region2) Existing() (map[string]*ProviderHost, map[string]*Volume) {
-	hosts := map[string]*ProviderHost{}
+func (r *Region2) Existing() (map[string]*Host, map[string]*Volume) {
+	hosts := map[string]*Host{}
 	volumes := map[string]*Volume{}
 	for name, h := range r.Hosts {
 		if _, ok := r.Instances[name]; ok {
@@ -461,7 +461,7 @@ func (r *Region2) CreateInstancesGenerator(ctx context.Context) <-chan *UpInstan
 	for _, h := range r.Hosts {
 		ch := make(chan *UpInstanceGeneratorResponse)
 		channels = append(channels, ch)
-		go func(h *ProviderHost) {
+		go func(h *Host) {
 			defer close(ch)
 			if err := r.createOneInstance(ctx, h); err != nil {
 				log2.Errorf(err.Error())
@@ -480,7 +480,7 @@ func (r *Region2) CreateInstancesGenerator(ctx context.Context) <-chan *UpInstan
 	return util.Multiplex(ctx, channels...)
 }
 
-func (r *Region2) createOneInstance(ctx context.Context, h *ProviderHost) error {
+func (r *Region2) createOneInstance(ctx context.Context, h *Host) error {
 	secGroupIds := []string{r.sshSecurityGroupId, r.xbeeSecurityGroupId}
 	if len(h.Ports) > 0 {
 		secGroupId, err := r.createSecurityGroup(ctx, h)
@@ -570,7 +570,7 @@ func (r *Region2) createOneInstance(ctx context.Context, h *ProviderHost) error 
 	return nil
 }
 
-func (r *Region2) createSecurityGroup(ctx context.Context, host *ProviderHost) (*string, error) {
+func (r *Region2) createSecurityGroup(ctx context.Context, host *Host) (*string, error) {
 	var secGroupId *string
 	if res, err := r.Svc.CreateSecurityGroup(ctx, &ec2.CreateSecurityGroupInput{
 		VpcId:       r.VpcId,
@@ -754,7 +754,7 @@ func (r *Region2) createXbeeSecurityGroup(ctx context.Context) (string, error) {
 	return secGroupId, nil
 }
 
-func (r *Region2) availabilityZoneFor(h *ProviderHost) (*types.Placement, error) {
+func (r *Region2) availabilityZoneFor(h *Host) (*types.Placement, error) {
 	var az string
 	var existingVolume string
 	for _, volName := range h.Volumes {
@@ -954,7 +954,7 @@ func (r *Region2) PackInstancesGenerator(ctx context.Context) <-chan *OperationS
 	for _, h := range r.Hosts {
 		ch := make(chan *OperationStatus)
 		channels = append(channels, ch)
-		go func(h *ProviderHost) {
+		go func(h *Host) {
 			defer close(ch)
 			if err := r.packInstance(ctx, h); err != nil {
 				ch <- &OperationStatus{
@@ -972,7 +972,7 @@ func (r *Region2) PackInstancesGenerator(ctx context.Context) <-chan *OperationS
 	return util.Multiplex(ctx, channels...)
 }
 
-func (r *Region2) packInstance(ctx context.Context, h *ProviderHost) error {
+func (r *Region2) packInstance(ctx context.Context, h *Host) error {
 	if len(r.Instances) == 0 {
 		log2.Warnf("r.Instances has size 0")
 	}

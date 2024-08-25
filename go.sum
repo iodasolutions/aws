@@ -117,6 +117,12 @@ github.com/iodasolutions/xbee-common v0.0.0-20240713095501-718cc84075b8 h1:LiHiH
 github.com/iodasolutions/xbee-common v0.0.0-20240713095501-718cc84075b8/go.mod h1:Yfpj+f4yCrJgbOLWqtn5Vzen2Vas0Gsi5vsS/Wc46QE=
 github.com/iodasolutions/xbee-common v0.0.0-20240713095617-14579b2802ea h1:jGEYUOtMwhmvWeOJPW/P2j5iW7tKl88X1COtcEXEsxM=
 github.com/iodasolutions/xbee-common v0.0.0-20240713095617-14579b2802ea/go.mod h1:Yfpj+f4yCrJgbOLWqtn5Vzen2Vas0Gsi5vsS/Wc46QE=
+github.com/iodasolutions/xbee-common v0.0.0-20240728055633-d117e50cf4ef h1:BqeI0nYKdj1gqYN9mKFcwaSJ4QtRE6lCIrJGDJjcz8E=
+github.com/iodasolutions/xbee-common v0.0.0-20240728055633-d117e50cf4ef/go.mod h1:Yfpj+f4yCrJgbOLWqtn5Vzen2Vas0Gsi5vsS/Wc46QE=
+github.com/iodasolutions/xbee-common v0.0.0-20240811100232-9b7a7d115393 h1:+ZBrcQ1o3/bWixWya7RezLn1Ublmpn+i10NDChmBWmo=
+github.com/iodasolutions/xbee-common v0.0.0-20240811100232-9b7a7d115393/go.mod h1:Yfpj+f4yCrJgbOLWqtn5Vzen2Vas0Gsi5vsS/Wc46QE=
+github.com/iodasolutions/xbee-common v0.0.0-20240811104842-cac50fa9232f h1:UfgWrcZ5MhWAlFORDG1ven8Vw1tMqK6RJtc9vg7a+1A=
+github.com/iodasolutions/xbee-common v0.0.0-20240811104842-cac50fa9232f/go.mod h1:Yfpj+f4yCrJgbOLWqtn5Vzen2Vas0Gsi5vsS/Wc46QE=
 github.com/jmespath/go-jmespath v0.4.0 h1:BEgLn5cpjn8UN1mAw4NjwDrS35OdebyEtFe+9YPoQUg=
 github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHWvzYPziyZiYoo=
 github.com/jmespath/go-jmespath/internal/testify v1.5.1 h1:shLQSRRSCCPj3f2gpwzGwWFoC7ycTf1rcQZHOlsJ6N8=

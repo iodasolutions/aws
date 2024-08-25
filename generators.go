@@ -32,7 +32,7 @@ func sendError(ctx context.Context, ch chan *response, err error) {
 	}
 }
 
-func newRegion(ctx context.Context, name string, hosts map[string]*ProviderHost, volumes map[string]*Volume) <-chan *response {
+func newRegion(ctx context.Context, name string, hosts map[string]*Host, volumes map[string]*Volume) <-chan *response {
 	ch := make(chan *response)
 	go func() {
 		defer close(ch)
@@ -141,6 +141,6 @@ func regionsForHosts(ctx context.Context) (map[string]*Region2, *cmd.XbeeError) 
 }
 
 type OperationStatus struct {
-	Host    *ProviderHost
+	Host    *Host
 	InError bool
 }
