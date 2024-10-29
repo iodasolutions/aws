@@ -1000,7 +1000,7 @@ func (r *Region2) packInstance(ctx context.Context, h *Host) error {
 		},
 		{
 			Key:   aws.String("xbee.origin"),
-			Value: aws.String(h.EffectivePackId().Origin),
+			Value: aws.String(h.EffectivePackId().Repo),
 		},
 		{
 			Key:   aws.String("xbee.commit"),
@@ -1015,7 +1015,7 @@ func (r *Region2) packInstance(ctx context.Context, h *Host) error {
 		tags = append(tags,
 			types.Tag{
 				Key:   aws.String("xbee.system.origin"),
-				Value: aws.String(h.SystemId.Origin),
+				Value: aws.String(h.SystemId.Repo),
 			},
 			types.Tag{
 				Key:   aws.String("xbee.system.commit"),

@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+// ubuntu: "099720109477", "24.04 LTS", "x86_64"
+// rockylinux: "792107900819", "Rocky-9-EC2-Base-9.3-20231113.0.x86_64", "x86_64"
+// rockylinux: "792107900819", "Rocky-9-EC2-Base-9.3-20231113.0.aarch64", "arm64"
 func main() {
 	d := util.StartDuration()
 	defer func() {
@@ -19,7 +22,7 @@ func main() {
 	ctx := context.Background()
 	result := map[string]types.Image{}
 	// arch = x86_64 | arm64
-	for response := range AmisGenerator(ctx, "099720109477", "22.04 LTS", "x86_64") {
+	for response := range AmisGenerator(ctx, "792107900819", "Rocky-9-EC2-Base-9.3-20231113.0.aarch64", "arm64") {
 		if response.Err == nil {
 			for _, image := range response.Images {
 				if existing, ok := result[response.Region]; ok {
