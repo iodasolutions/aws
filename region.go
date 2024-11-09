@@ -1049,7 +1049,7 @@ func (r *Region2) packInstance(ctx context.Context, h *Host) error {
 					return nil
 				}
 				if state == "failed" {
-					return fmt.Errorf("Creation of AMI %s failed", h.EffectivePackId())
+					return fmt.Errorf("creation of AMI %s failed", h.EffectivePackId().ShortName())
 				}
 			}
 		}
