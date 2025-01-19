@@ -158,7 +158,7 @@ func (pv Provider) Image() *cmd.XbeeError {
 		ch := util.Multiplex(ctx, channels...)
 		var inError bool
 		for status := range ch {
-			packName := status.Host.EffectivePackId().ShortName()
+			packName := status.Host.EffectivePackName()
 			if status.InError {
 				inError = true
 				log2.Errorf("Creation of AMI %s failed", packName)

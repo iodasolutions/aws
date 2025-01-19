@@ -1,40 +1,71 @@
 package aws
 
 import (
+	"encoding/json"
 	"github.com/iodasolutions/xbee-common/cmd"
 	"github.com/iodasolutions/xbee-common/provider"
 	"github.com/iodasolutions/xbee-common/types"
+	"github.com/iodasolutions/xbee-common/util"
 )
+
+type AwsHostData struct {
+	AvailabilityZone string `json:"availabilityZone"`
+	InstanceType     string `json:"instanceType"`
+	Region           string `json:"region"`
+	Size             int    `json:"size"`
+
+	Ami string `json:"ami"`
+}
 
 type Host struct {
 	provider.XbeeHost
-	Specification *Model
+	Specification *AwsHostData
 }
 
-func NewHost(host provider.XbeeElement[provider.XbeeHost]) (*Host, *cmd.XbeeError) {
-	m, err := NewModel(host.Provider)
+func NewHost(host provider.XbeeHost) (*Host, *cmd.XbeeError) {
+	var result AwsHostData
+	data, err := util.NewJsonIO(host.Provider).SaveAsBytes()
 	if err != nil {
-		return nil, err
+		panic(cmd.Error("unexpected error when serializing data provider: %v", err))
 	}
-	return &Host{XbeeHost: host.Element, Specification: m}, nil
+	if err := json.Unmarshal(data, &result); err != nil {
+		panic(cmd.Error("unexpected error when deserializing data provider : %v", err))
+	}
+	amis := provider.SystemProviderDataFor(host.SystemHash)["amis"].(map[string]interface{})
+	if amisForOsArh, ok := amis[host.OsArch].(map[string]interface{}); ok {
+		if ami, ok := amisForOsArh[result.Region]; ok {
+			result.Ami = ami.(string)
+		} else {
+			return nil, cmd.Error("unsupported region property : %s", result.Region)
+		}
+	} else {
+		return nil, cmd.Error("unsupported osarch property : %s", host.OsArch)
+	}
+	return &Host{XbeeHost: host, Specification: &result}, nil
 }
 
-func (ph *Host) EffectivePackId() *types.IdJson {
-	if ph.PackId == nil {
-		return ph.SystemId
+func (ph *Host) EffectivePackOrigin() *types.Origin {
+	if ph.PackOrigin == nil {
+		return ph.SystemOrigin
 	}
-	return ph.PackId
+	return ph.PackOrigin
+}
+func (ph *Host) EffectivePackName() string {
+	if ph.PackName != "" {
+		return ph.PackName
+	}
+	return ph.SystemName
 }
 func (ph *Host) EffectiveHash() string {
-	if ph.PackId == nil {
+	if ph.PackOrigin == nil {
 		return ph.SystemHash
 	}
 	return ph.PackHash
 }
 func (ph *Host) DisplayName() string {
-	name := ph.EffectivePackId().ShortName()
-	if ph.PackId != nil {
-		name += "-" + ph.SystemId.ShortName()
+	name := ph.EffectivePackName()
+	if ph.PackOrigin != nil {
+		name += "-" + ph.SystemName
 	}
 	return name
 }

@@ -1,23 +1,35 @@
 package aws
 
 import (
+	"encoding/json"
 	"github.com/iodasolutions/xbee-common/cmd"
 	"github.com/iodasolutions/xbee-common/provider"
+	"github.com/iodasolutions/xbee-common/util"
 )
+
+type AwsVolumeData struct {
+	Size       int    `json:"size"`
+	VolumeType string `json:"volumeType"`
+	Region     string `json:"region"`
+}
 
 type Volume struct {
 	provider.XbeeVolume
-	Specification *Model
+	Specification *AwsVolumeData
 }
 
-func volumeFrom(req provider.XbeeElement[provider.XbeeVolume]) (*Volume, *cmd.XbeeError) {
-	m, err := NewModel(req.Provider)
+func volumeFrom(req provider.XbeeVolume) (*Volume, *cmd.XbeeError) {
+	var result AwsVolumeData
+	data, err := util.NewJsonIO(req.Provider).SaveAsBytes()
 	if err != nil {
-		return nil, cmd.Error("cannot unmarshal json provider data for volume %s : %v", req.Element.Name, err)
+		panic(cmd.Error("unexpected error when serializing data provider: %v", err))
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		panic(cmd.Error("unexpected error when deserializing data provider : %v", err))
 	}
 	return &Volume{
-		XbeeVolume:    req.Element,
-		Specification: m,
+		XbeeVolume:    req,
+		Specification: &result,
 	}, nil
 }
 

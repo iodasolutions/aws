@@ -504,7 +504,7 @@ func (r *Region2) createOneInstance(ctx context.Context, h *Host) error {
 	}
 
 	var amiToUse string
-	if h.PackId != nil {
+	if h.PackOrigin != nil {
 		if builtAmi, ok := r.ImageMap[h.PackHash]; ok {
 			amiToUse = builtAmi
 		}
@@ -1000,26 +1000,26 @@ func (r *Region2) packInstance(ctx context.Context, h *Host) error {
 		},
 		{
 			Key:   aws.String("xbee.origin"),
-			Value: aws.String(h.EffectivePackId().Repo),
+			Value: aws.String(h.EffectivePackOrigin().Repo),
 		},
 		{
 			Key:   aws.String("xbee.commit"),
-			Value: aws.String(h.EffectivePackId().Commit),
+			Value: aws.String(h.EffectivePackOrigin().Commit),
 		},
 		{
 			Key:   aws.String("xbee.os_arch"),
-			Value: aws.String(h.Specification.OsArch),
+			Value: aws.String(h.OsArch),
 		},
 	}
-	if h.PackId != nil {
+	if h.PackOrigin != nil {
 		tags = append(tags,
 			types.Tag{
 				Key:   aws.String("xbee.system.origin"),
-				Value: aws.String(h.SystemId.Repo),
+				Value: aws.String(h.SystemOrigin.Repo),
 			},
 			types.Tag{
 				Key:   aws.String("xbee.system.commit"),
-				Value: aws.String(h.SystemId.Commit),
+				Value: aws.String(h.SystemOrigin.Commit),
 			},
 			types.Tag{
 				Key:   aws.String("xbee.system.id"),
@@ -1049,7 +1049,7 @@ func (r *Region2) packInstance(ctx context.Context, h *Host) error {
 					return nil
 				}
 				if state == "failed" {
-					return fmt.Errorf("creation of AMI %s failed", h.EffectivePackId().ShortName())
+					return fmt.Errorf("creation of AMI %s failed", h.EffectivePackName())
 				}
 			}
 		}
