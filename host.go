@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/iodasolutions/xbee-common/cmd"
 	"github.com/iodasolutions/xbee-common/provider"
-	"github.com/iodasolutions/xbee-common/types"
 	"github.com/iodasolutions/xbee-common/util"
 )
 
@@ -18,11 +17,11 @@ type AwsHostData struct {
 }
 
 type Host struct {
-	provider.XbeeHost
+	*provider.XbeeHost
 	Specification *AwsHostData
 }
 
-func NewHost(host provider.XbeeHost) (*Host, *cmd.XbeeError) {
+func NewHost(host *provider.XbeeHost) (*Host, *cmd.XbeeError) {
 	var result AwsHostData
 	data, err := util.NewJsonIO(host.Provider).SaveAsBytes()
 	if err != nil {
@@ -44,31 +43,6 @@ func NewHost(host provider.XbeeHost) (*Host, *cmd.XbeeError) {
 	return &Host{XbeeHost: host, Specification: &result}, nil
 }
 
-func (ph *Host) EffectivePackOrigin() *types.Origin {
-	if ph.PackOrigin == nil {
-		return ph.SystemOrigin
-	}
-	return ph.PackOrigin
-}
-func (ph *Host) EffectivePackName() string {
-	if ph.PackName != "" {
-		return ph.PackName
-	}
-	return ph.SystemName
-}
-func (ph *Host) EffectiveHash() string {
-	if ph.PackOrigin == nil {
-		return ph.SystemHash
-	}
-	return ph.PackHash
-}
-func (ph *Host) DisplayName() string {
-	name := ph.EffectivePackName()
-	if ph.PackOrigin != nil {
-		name += "-" + ph.SystemName
-	}
-	return name
-}
 func HostsByRegion() (map[string]map[string]*Host, *cmd.XbeeError) {
 	hosts := provider.Hosts()
 	result := map[string]map[string]*Host{}

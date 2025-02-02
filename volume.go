@@ -14,11 +14,11 @@ type AwsVolumeData struct {
 }
 
 type Volume struct {
-	provider.XbeeVolume
+	*provider.XbeeVolume
 	Specification *AwsVolumeData
 }
 
-func volumeFrom(req provider.XbeeVolume) (*Volume, *cmd.XbeeError) {
+func volumeFrom(req *provider.XbeeVolume) (*Volume, *cmd.XbeeError) {
 	var result AwsVolumeData
 	data, err := util.NewJsonIO(req.Provider).SaveAsBytes()
 	if err != nil {
