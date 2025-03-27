@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.30.4
 	github.com/aws/aws-sdk-go-v2/config v1.27.31
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.177.0
-	github.com/iodasolutions/xbee-common v0.0.0-20250202064305-73639d3ea0a9
+	github.com/iodasolutions/xbee-common v0.0.0-20250327193528-151a1e99e9ac
 )
 
 require (

@@ -51,9 +51,7 @@ func (pv Provider) Up() ([]*provider.InstanceInfo, *cmd.XbeeError) {
 		ch := util.Multiplex(ctx, channels...)
 		var createdAndStarted, created []string
 		var inError bool
-		upStatuses := map[string]*UpInstanceGeneratorResponse{}
 		for upStatus := range ch {
-			upStatuses[upStatus.Name] = upStatus
 			if upStatus.InError {
 				inError = true
 			}
@@ -76,14 +74,6 @@ func (pv Provider) Up() ([]*provider.InstanceInfo, *cmd.XbeeError) {
 			rInfos := r.instanceInfos()
 			for _, name := range filtered {
 				infos[name] = rInfos[name]
-				upStatus := upStatuses[name]
-				if upStatus.InitiallyUp {
-					infos[name].InitialState = "up"
-				} else if upStatus.InitiallyDown {
-					infos[name].InitialState = "down"
-				} else if upStatus.InitiallyNotExisting {
-					infos[name].InitialState = "not existing"
-				}
 			}
 		}
 		var wg sync.WaitGroup
@@ -128,6 +118,11 @@ func (pv Provider) Delete() *cmd.XbeeError {
 		return nil
 	}
 
+}
+
+func (pv Provider) Down() *cmd.XbeeError {
+	//Do nothing for this provider
+	return nil
 }
 
 func (pv Provider) InstanceInfos() ([]*provider.InstanceInfo, *cmd.XbeeError) {
